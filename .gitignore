@@ -1,0 +1,78 @@
+# =========================
+# Python
+# =========================
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+*.so
+*.egg-info/
+dist/
+build/
+
+# =========================
+# Virtual environments
+# =========================
+.venv/
+venv/
+ENV/
+env/
+
+# =========================
+# IDE / Editors
+# =========================
+.vscode/
+.idea/
+*.iml
+
+# =========================
+# OS files
+# =========================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# =========================
+# Logs / cache
+# =========================
+*.log
+.cache/
+
+# =========================
+# Output images / exports
+# (keep sample images, ignore results)
+# =========================
+output/
+download/
+exports/
+temp/
+
+# =========================
+# Test images (optional)
+# =========================
+test_images/
+processed/
+
+# =========================
+# Qt / PySide runtime junk
+# =========================
+*.qmlc
+*.jsc
+*.pyc
+
+# =========================
+# Jupyter (if any)
+# =========================
+.ipynb_checkpoints/
+
+# =========================
+# Environment variables
+# =========================
+.env
+.env.*
+
+# =========================
+# Git safety
+# =========================
+*.bak
+*.swp
