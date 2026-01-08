@@ -5,14 +5,26 @@ V.A.L.O. is a simple desktop image editing application built with **PySide6** an
 ---
 
 ## 🔧 How to Run
+1. Create a virtual environment
+    From the project root directory:
+    ```bash
+    py -3.12 -m venv venv
 
-Create a virtual environment
+2. Activate it:
+    ```bash
+    .\venv\Scripts\Activate.ps1
 
-**Windows (PowerShell)**
+3. Upgrade pip tools
+    ```bash
+    python -m pip install --upgrade pip setuptools wheel
 
-    python -m venv .venv
-    .\.venv\Scripts\Activate.ps1
-    python home.py
+3. Install dependencies
+    ```bash
+    pip install PySide6 opencv-python numpy
+
+4. Always run the app from the project root, not inside frontend/.
+    ```bash
+    python -m frontend.home
 
 ## 📄 License
 

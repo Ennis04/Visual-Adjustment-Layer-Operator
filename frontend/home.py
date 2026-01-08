@@ -11,8 +11,10 @@ from PySide6.QtWidgets import (
     QVBoxLayout, QWidget
 )
 
-from operation import OperationWindow
+from .operation import OperationWindow
 
+FRONTEND_DIR = Path(__file__).resolve().parent
+IMG_DIR = FRONTEND_DIR / "img"
 
 def cv_to_pixmap(bgr_img) -> QPixmap:
     rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
@@ -140,7 +142,7 @@ class MainWindow(QMainWindow):
         thumbs_row.setSpacing(14)
 
         for i in range(1, 5):
-            img_path = Path("img") / f"sample{i}.jpg"
+            img_path = IMG_DIR / f"sample{i}.jpg"
             btn = ThumbButton(img_path, on_click=lambda _, x=i: self.use_sample(x))
             thumbs_row.addWidget(btn)
         thumbs_row.addStretch(1)
@@ -303,7 +305,7 @@ class MainWindow(QMainWindow):
 
     def pick_image(self):
         path, _ = QFileDialog.getOpenFileName(
-            self, "Choose an image", str(Path.cwd()),
+            self, "Choose an image", str(FRONTEND_DIR),
             "Images (*.png *.jpg *.jpeg *.bmp *.webp)"
         )
         if not path:
@@ -317,7 +319,7 @@ class MainWindow(QMainWindow):
         self.enter_preview(cv_to_pixmap(img))
 
     def use_sample(self, idx: int):
-        sample_path = Path("img") / f"sample{idx}.jpg"
+        sample_path = IMG_DIR / f"sample{idx}.jpg"
         if not sample_path.exists():
             QMessageBox.information(self, "Sample not found", f"Missing file:\n{sample_path}")
             return

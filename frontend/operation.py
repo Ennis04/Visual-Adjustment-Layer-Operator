@@ -429,7 +429,10 @@ class OperationWindow(QMainWindow):
 
     def __init__(self, initial_pixmap: Optional[QPixmap] = None, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("V.A.L.O.")
+        title = QLabel("V.A.L.O.")
+        title.setObjectName("TopTitle")
+        title.setAlignment(Qt.AlignCenter)
+        title.setAttribute(Qt.WA_StyledBackground, True)
 
         self.params = UIParams()
         self._current_tab = "adjust"
@@ -734,22 +737,66 @@ class OperationWindow(QMainWindow):
 
         # Styles
         self.setStyleSheet("""
-            QWidget { background:#e9e6e3; color:#111; font-family: system-ui, Segoe UI, Arial; }
-            #TopBar { background:#d9d9d9; }
-            #TopTitle { font-weight:900; letter-spacing:0.22em; font-size:28px; }
+            QWidget { 
+                background:#e9e6e3; 
+                color:#111;
+                font-family: system-ui, Segoe UI, Arial; 
+            }
+                           
+            #TopBar { 
+                background:#d9d9d9; 
+            }
+                           
+            #TopTitle {
+                background:#d9d9d9;
+                font-weight:900;
+                letter-spacing:0.22em;
+                font-size:28px;
+                padding:6px 18px;
+                border-radius:6px;
+            }
 
-            #Tabs { background:#e7e7e7; border:1px solid #cfcfcf; border-radius:10px; }
-            QPushButton#TabBtn { background:#e7e7e7; border:none; padding:10px 8px; font-weight:800; }
-            QPushButton#TabBtn:checked { background:#d6d6d6; }
+            #Tabs { 
+                background:#e7e7e7; 
+                border:1px solid #cfcfcf; 
+                border-radius:10px; 
+            }
+                           
+            QPushButton#TabBtn { 
+                background:#e7e7e7; 
+                border:none; 
+                padding:10px 8px; 
+                font-weight:800;
+            }
+                           
+            QPushButton#TabBtn:checked { 
+                background:#d6d6d6; 
+            }
 
-            QPushButton#IconBtn { background:#f6f6f6; border:1px solid #cfcfcf; border-radius:8px; font-weight:900; }
-            QPushButton#GhostBtn { background:#f6f6f6; border:1px solid #cfcfcf; border-radius:8px; padding:0 12px; font-weight:700; }
-            QPushButton#PrimaryBtn { background:#1f74ff; color:white; border:none; border-radius:8px; padding:0 16px; font-weight:800; }
+            QPushButton#IconBtn { 
+                background:#f6f6f6; 
+                border:1px solid #cfcfcf; 
+                border-radius:8px; 
+                font-weight:900; 
+            }
+                           
+            QPushButton#GhostBtn { 
+                background:#f6f6f6;
+                border:1px solid #cfcfcf; 
+                border-radius:8px; 
+                padding:0 12px; 
+                font-weight:700; 
+            }
+                           
+            QPushButton#PrimaryBtn { 
+                background:#1f74ff; 
+                color:white; 
+                border:none; 
+                border-radius:8px; 
+                padding:0 16px; 
+                font-weight:800; 
+            }
 
-            /* Apply button style:
-               - disabled => white bg + grey text (your #2)
-               - enabled  => blue (via enabled rule)
-            */
             QPushButton#ApplyBtn {
                 border-radius: 8px;
                 padding: 0 18px;
@@ -758,25 +805,59 @@ class OperationWindow(QMainWindow):
                 background: white;
                 color: #9a9a9a;
             }
+                           
             QPushButton#ApplyBtn:enabled {
                 background: #1f74ff;
                 color: white;
                 border: none;
             }
 
-            /* Disabled general buttons grey */
-            QPushButton:disabled { color:#9a9a9a; border-color:#d6d6d6; background:#f0f0f0; }
+            QPushButton:disabled { 
+                color:#9a9a9a; 
+                border-color:#d6d6d6; 
+                background:#f0f0f0; 
+            }
 
-            QGroupBox#Block { border:1px solid #cfcfcf; border-radius:10px; margin-top:10px; background:#e7e7e7; }
-            QGroupBox#Block::title { subcontrol-origin: margin; left:12px; padding:0 6px; font-weight:900; }
+            QGroupBox#Block {
+                border:1px solid #cfcfcf; 
+                border-radius:10px; 
+                margin-top:10px; 
+                background:#e7e7e7; 
+            }
+                           
+            QGroupBox#Block::title { 
+                subcontrol-origin: margin; 
+                left:12px;
+                padding:0 6px; 
+                font-weight:900; 
+            }
 
-            QLabel#RemoveTitle { font-weight:900; }
-            QLabel#HintText { color:#6b6b6b; font-size:12px; }
+            QLabel#RemoveTitle { 
+                font-weight:900; 
+            }
+                           
+            QLabel#HintText { 
+                color:#6b6b6b; 
+                font-size:12px; 
+            }
 
-            QPushButton#CropBtn { background:#f3f3f3; border:1px solid #cfcfcf; border-radius:8px; padding:10px 8px; font-weight:800; }
-            QPushButton#CropBtn:checked { background:#d6d6d6; }
+            QPushButton#CropBtn { 
+                background:#f3f3f3; 
+                border:1px solid #cfcfcf; 
+                border-radius:8px; 
+                padding:10px 8px; 
+                font-weight:800; 
+            }
+                           
+            QPushButton#CropBtn:checked { 
+                background:#d6d6d6; 
+            }
 
-            #StageFrame { background:#efefef; border:2px solid #cfcfcf; }
+            #StageFrame { 
+                background:#efefef; 
+                border:2px solid #cfcfcf; 
+            }
+                           
         """)
 
         # signals
