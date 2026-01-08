@@ -1,5 +1,21 @@
-To run this file, please ensure that u are using python 3.12.x
+# V.A.L.O.
 
-py -3.12 -m venv .venv
-.\.venv\Scripts\activate
+V.A.L.O. is a simple desktop image editing application built with **PySide6** and **OpenCV**.
+
+---
+
+## How to Run
+
+Create a virtual environment
+
+**Windows (PowerShell)**
+```bash
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
 python home.py
+
+
+## License
+
+This project is for educational use (course assignment).
+You may add a license file if you plan to open-source it.

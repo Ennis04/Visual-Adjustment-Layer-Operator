@@ -1,20 +1,26 @@
 import sys
+import traceback
 from pathlib import Path
 import cv2
+
 from PySide6.QtCore import Qt
-from PySide6.QtGui import QFont, QImage, QPainter, QPen, QPixmap
-from PySide6.QtWidgets import (QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel, QMainWindow, QMessageBox, QPushButton, QSizePolicy, QVBoxLayout, QWidget,)
+from PySide6.QtGui import QImage, QPainter, QPen, QPixmap
+from PySide6.QtWidgets import (
+    QApplication, QFileDialog, QFrame, QHBoxLayout, QLabel,
+    QMainWindow, QMessageBox, QPushButton, QSizePolicy,
+    QVBoxLayout, QWidget
+)
+
 from operation import OperationWindow
 
-# ----- Helpers ----- #
-# Convert OpenCV BGR image to QPixmap
+
 def cv_to_pixmap(bgr_img) -> QPixmap:
     rgb = cv2.cvtColor(bgr_img, cv2.COLOR_BGR2RGB)
     h, w, ch = rgb.shape
     qimg = QImage(rgb.data, w, h, ch * w, QImage.Format_RGB888)
     return QPixmap.fromImage(qimg.copy())
 
-# Draw upload icon
+
 def make_upload_icon(size: int = 88) -> QPixmap:
     pm = QPixmap(size, size)
     pm.fill(Qt.white)
@@ -49,29 +55,18 @@ def make_upload_icon(size: int = 88) -> QPixmap:
     p.end()
     return pm
 
-# Change cursor to hand for buttons
+
 class ThumbButton(QPushButton):
     def __init__(self, image_path: Path, on_click):
         super().__init__()
-
         self.setCursor(Qt.PointingHandCursor)
         self.setFixedSize(120, 80)
-        self.setStyleSheet("""
-            QPushButton {
-                border: none;
-                padding: 0;
-                background: transparent;
-            }
-            QPushButton:hover {
-                transform: translateY(-1px);
-            }
-        """)
+        self.setStyleSheet("QPushButton{border:none; padding:0; background:transparent;}")
 
         if image_path.exists():
             img = cv2.imread(str(image_path))
             if img is not None:
-                pix = cv_to_pixmap(img)
-                pix = pix.scaled(
+                pix = cv_to_pixmap(img).scaled(
                     self.size(),
                     Qt.KeepAspectRatioByExpanding,
                     Qt.SmoothTransformation,
@@ -81,16 +76,15 @@ class ThumbButton(QPushButton):
 
         self.clicked.connect(on_click)
 
-# ----- Main Window ----- #
+
 class MainWindow(QMainWindow):
     def __init__(self):
         super().__init__()
         self.setWindowTitle("V.A.L.O.")
 
-        # Store selected image 
         self._selected_pixmap: QPixmap | None = None
+        self.op_window: OperationWindow | None = None
 
-        # Root
         root = QWidget()
         self.setCentralWidget(root)
         root_layout = QVBoxLayout(root)
@@ -113,8 +107,6 @@ class MainWindow(QMainWindow):
         top_layout.addStretch(1)
         top_layout.addWidget(title_badge)
         top_layout.addStretch(1)
-
-
         root_layout.addWidget(topbar)
 
         # Main area
@@ -149,10 +141,7 @@ class MainWindow(QMainWindow):
 
         for i in range(1, 5):
             img_path = Path("img") / f"sample{i}.jpg"
-            btn = ThumbButton(
-                img_path,
-                on_click=lambda _, x=i: self.use_sample(x)
-            )
+            btn = ThumbButton(img_path, on_click=lambda _, x=i: self.use_sample(x))
             thumbs_row.addWidget(btn)
         thumbs_row.addStretch(1)
 
@@ -165,7 +154,6 @@ class MainWindow(QMainWindow):
         left.addLayout(thumbs_row)
         left.addStretch(1)
 
-
         content_layout.addWidget(left_panel, 1)
 
         # RIGHT PANEL (UPLOAD CARD)
@@ -175,18 +163,23 @@ class MainWindow(QMainWindow):
         self.card.setMaximumWidth(720)
         self.card.setSizePolicy(QSizePolicy.Preferred, QSizePolicy.Expanding)
 
+        # Force Qt to actually paint background for frames/widgets
+        self.card.setAttribute(Qt.WA_StyledBackground, True)
+
         card_layout = QVBoxLayout(self.card)
         card_layout.setContentsMargins(44, 44, 44, 44)
         card_layout.setSpacing(18)
         card_layout.setAlignment(Qt.AlignCenter)
 
-        # Upload mode widgets
         self.upload_icon_box = QFrame()
         self.upload_icon_box.setObjectName("UploadIconBox")
         self.upload_icon_box.setFixedSize(380, 120)
+        self.upload_icon_box.setAttribute(Qt.WA_StyledBackground, True)
+
         box_layout = QVBoxLayout(self.upload_icon_box)
         box_layout.setContentsMargins(0, 0, 0, 0)
         box_layout.setAlignment(Qt.AlignCenter)
+
         self.upload_icon = QLabel()
         self.upload_icon.setPixmap(make_upload_icon(92))
         self.upload_icon.setAlignment(Qt.AlignCenter)
@@ -199,9 +192,10 @@ class MainWindow(QMainWindow):
         self.upload_btn.setFixedWidth(320)
         self.upload_btn.clicked.connect(self.pick_image)
 
-        # Preview panel (single box)
         self.preview_container = QFrame()
         self.preview_container.setObjectName("PreviewPanel")
+        self.preview_container.setAttribute(Qt.WA_StyledBackground, True)
+
         pv = QVBoxLayout(self.preview_container)
         pv.setContentsMargins(14, 14, 14, 14)
         pv.setSpacing(10)
@@ -214,9 +208,10 @@ class MainWindow(QMainWindow):
 
         self.preview_container.setVisible(False)
 
-        # Action buttons
         self.action_row = QFrame()
         self.action_row.setObjectName("ActionRow")
+        self.action_row.setAttribute(Qt.WA_StyledBackground, True)
+
         ar = QHBoxLayout(self.action_row)
         ar.setContentsMargins(0, 0, 0, 0)
         ar.setSpacing(12)
@@ -238,6 +233,8 @@ class MainWindow(QMainWindow):
 
         self.upload_mode = QWidget()
         self.upload_mode.setObjectName("UploadMode")
+        self.upload_mode.setAttribute(Qt.WA_StyledBackground, True)
+
         upload_mode_layout = QVBoxLayout(self.upload_mode)
         upload_mode_layout.setContentsMargins(0, 0, 0, 0)
         upload_mode_layout.setSpacing(18)
@@ -252,148 +249,62 @@ class MainWindow(QMainWindow):
         card_layout.addWidget(self.action_row)
         card_layout.addStretch(1)
 
-
         content_layout.addWidget(self.card, 0)
 
-        # Styles
-        self.setStyleSheet(
-            """
-            QWidget { 
-                background:#e9e6e3; 
-                color:#111; 
-                font-family: system-ui, Segoe UI, Arial;
-            }
-
-            #TopBar {
-                background:#d9d9d9;
-            }
+        self.setStyleSheet("""
+            QWidget { background:#e9e6e3; color:#111; font-family: system-ui, Segoe UI, Arial; }
+            #TopBar { background:#d9d9d9; }
 
             #TopTitleBadge {
-                background: #d9d9d9;
-                border-radius: 6px;
-                font-weight: 900;
-                letter-spacing: 0.22em;
-                font-size: 34px;
-                padding: 6px 18px;
+                background:#d9d9d9; border-radius:6px; font-weight:900;
+                letter-spacing:0.22em; font-size:34px; padding:6px 18px;
             }
 
-            #WelcomeTitle { 
-                font-size:54px; 
-                font-weight:900; 
-                font-style:italic; 
-            }
+            #WelcomeTitle { font-size:54px; font-weight:900; font-style:italic; }
+            #WelcomeSub { font-size:20px; font-style:italic; color:#565656; }
+            #Underline { background:#1f1f1f; border:none; }
+            #Hint { font-size:14px; font-style:italic; color:#565656; }
 
-            #WelcomeSub { 
-                font-size:20px; 
-                font-style:italic; 
-                color:#565656; 
-            }
-
-            #Underline { 
-                background:#1f1f1f; 
-                border:none; 
-            }
-
-            #Hint { 
-                font-size:14px; 
-                font-style:italic; 
-                color:#565656; 
-            }
-
-            #ThumbBtn {
-                background:white; 
-                border:1px solid rgba(0,0,0,0.12);
-                border-radius:14px; 
-                font-weight:700;
-            }
-
-            #ThumbBtn:hover { background:#f6f6f6; }
-
-            #UploadCard {
-                background:#fff; 
-                border:2px solid #cfcfcf; 
-                border-radius:14px;
-                box-shadow: 0 8px 22px rgba(0,0,0,0.14);
-            }
+            /* FORCE WHITE AREAS */
+            #UploadCard { background:#ffffff; border:2px solid #cfcfcf; border-radius:14px; }
+            #UploadMode { background:#ffffff; }
+            #UploadIconBox { background:#ffffff; border-radius:8px; }
+            #PreviewPanel { background:#ffffff; border:1px solid #e8e8e8; border-radius:10px; }
+            #ActionRow { background:#ffffff; }
 
             #UploadButton, #NextButton {
-                background:#1f74ff; 
-                color:#fff; 
-                border:none; 
-                border-radius:12px;
-                font-size:22px; 
-                font-weight:800; 
-                padding:12px 18px;
+                background:#1f74ff; color:#fff; border:none; border-radius:12px;
+                font-size:22px; font-weight:800; padding:12px 18px;
             }
-            #UploadButton:hover, #NextButton:hover { 
-                background:#1a66e6; 
-            }
+            #UploadButton:hover, #NextButton:hover { background:#1a66e6; }
 
             #CancelButton {
-                background:transparent; 
-                border:2px solid #cfcfcf; 
-                border-radius:12px;
-                font-size:18px; 
-                font-weight:700; 
-                padding:10px 18px;
+                background:#ffffff; border:2px solid #cfcfcf; border-radius:12px;
+                font-size:18px; font-weight:700; padding:10px 18px;
             }
+            #CancelButton:hover { background:#f5f5f5; }
+        """)
 
-            #CancelButton:hover { 
-                background:#f5f5f5; 
-            }
-
-            #PreviewPanel {
-                background:#fafafa; 
-                border:1px solid #e8e8e8; 
-                border-radius:10px;
-            }
-
-            #UploadIconBox {
-                background: #ffffff;
-                border-radius: 8px;
-            }
-
-            QPushButton:hover { 
-                transform: translateY(-1px);
-            }
-
-            #UploadMode {
-                background: #ffffff;
-            }
-
-            #ActionRow {
-                background: #ffffff;
-                border-radius: 10px;
-                padding: 10px;
-            }
-
-            
-            """
-        )
         self.showMaximized()
 
-    # Resize to adjust preview image
     def resizeEvent(self, event):
         super().resizeEvent(event)
         self._refresh_preview_pixmap()
 
     def _refresh_preview_pixmap(self):
-        pix = getattr(self, "_selected_pixmap", None)
-        if pix is None:
+        if self._selected_pixmap is None:
             return
         target = self.preview_img.size()
         if target.width() < 10 or target.height() < 10:
             return
         self.preview_img.setPixmap(
-            pix.scaled(target, Qt.KeepAspectRatio, Qt.SmoothTransformation)
+            self._selected_pixmap.scaled(target, Qt.KeepAspectRatio, Qt.SmoothTransformation)
         )
 
     def pick_image(self):
         path, _ = QFileDialog.getOpenFileName(
-            self,
-            "Choose an image",
-            str(Path.cwd()),
-            "Images (*.png *.jpg *.jpeg *.bmp *.webp)",
+            self, "Choose an image", str(Path.cwd()),
+            "Images (*.png *.jpg *.jpeg *.bmp *.webp)"
         )
         if not path:
             return
@@ -408,11 +319,7 @@ class MainWindow(QMainWindow):
     def use_sample(self, idx: int):
         sample_path = Path("img") / f"sample{idx}.jpg"
         if not sample_path.exists():
-            QMessageBox.information(
-                self,
-                "Sample not found",
-                f"Missing file:\n{sample_path}\n\nPut samples here:\nimg/sample1.jpg ... img/sample4.jpg",
-            )
+            QMessageBox.information(self, "Sample not found", f"Missing file:\n{sample_path}")
             return
 
         img = cv2.imread(str(sample_path))
@@ -426,9 +333,12 @@ class MainWindow(QMainWindow):
         self._selected_pixmap = pixmap
 
         self.upload_mode.setVisible(False)
-
         self.preview_container.setVisible(True)
         self.action_row.setVisible(True)
+
+        # Ensure buttons are not covered by anything
+        self.action_row.raise_()
+        self.next_btn.raise_()
 
         self._refresh_preview_pixmap()
 
@@ -438,17 +348,29 @@ class MainWindow(QMainWindow):
 
         self.preview_container.setVisible(False)
         self.action_row.setVisible(False)
-
         self.upload_mode.setVisible(True)
 
     def next_step(self):
-        if self._selected_pixmap is None:
-            return
-        
-        self.op_window = OperationWindow(self._selected_pixmap)
-        self.op_window.show()
-        self.hide()
+        # If this shows, the button is being clicked.
+        try:
+            if self._selected_pixmap is None:
+                QMessageBox.warning(self, "No image", "Please upload/select an image first.")
+                return
 
+            self.op_window = OperationWindow(self._selected_pixmap)
+            self.op_window.sig_cancel.connect(self._on_operation_cancelled)
+
+            self.op_window.show()
+            self.hide()
+
+        except Exception:
+            QMessageBox.critical(self, "Next Error", traceback.format_exc())
+
+    def _on_operation_cancelled(self):
+        self.show()
+        if self.op_window is not None:
+            self.op_window.deleteLater()
+            self.op_window = None
 
 
 if __name__ == "__main__":
