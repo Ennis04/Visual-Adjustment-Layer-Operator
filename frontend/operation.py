@@ -17,6 +17,7 @@ class UIParams:
     brightness: int = 0
     sharpness: int = 0
     denoise: int = 0
+    blur: int = 0
     red: int = 0
     green: int = 0
     blue: int = 0
@@ -570,6 +571,7 @@ class OperationWindow(QMainWindow):
         self._make_slider_block(adj, "Brightness", -100, 100, "brightness")
         self._make_slider_block(adj, "Sharpness", -100, 100, "sharpness")
         self._make_slider_block(adj, "Noise Reduction", 0, 100, "denoise")
+        self._make_slider_block(adj, "Blur", 0, 100, "blur")
         adj.addStretch(1)
 
         # --- Filter page ---

@@ -1,19 +1,46 @@
 import cv2
 import numpy as np
 
-
 def apply_brightness(img, value):
-    return cv2.convertScaleAbs(img, alpha=1.0, beta=value)
+    value = float(np.clip(value, -100, 100))
+    img_f = img.astype(np.float32) / 255.0
+
+    if value >= 0:
+        # brighten: scale up
+        factor = 1.0 + (value / 100.0)  # 1..2
+        out = img_f * factor
+    else:
+        # darken: gamma > 1 darkens smoothly
+        gamma = 1.0 + (-value / 100.0)  # 1..2
+        out = img_f ** gamma
+
+    out = np.clip(out, 0, 1) * 255.0
+    return out.astype(np.uint8)
 
 
 def apply_sharpness(img, value):
+    value = np.clip(value, -100, 100)
+
+    if value == 0:
+        return img
+
+    blur = cv2.GaussianBlur(img, (0, 0), sigmaX=1.0)
+
+    if value > 0:
+        # Sharpen
+        alpha = value / 100.0
+        return cv2.addWeighted(img, 1 + alpha, blur, -alpha, 0)
+    else:
+        # Soften
+        alpha = abs(value) / 100.0
+        return cv2.addWeighted(img, 1 - alpha, blur, alpha, 0)
+
+
+def apply_blur(img, value):
     if value <= 0:
         return img
-    kernel = np.array([[0, -1, 0],
-                       [-1, 5 + value / 10, -1],
-                       [0, -1, 0]], dtype=np.float32)
-    return cv2.filter2D(img, -1, kernel)
-
+    k = max(1, (value // 10) * 2 + 1)
+    return cv2.GaussianBlur(img, (k, k), 0)
 
 def apply_noise_reduction(img, value):
     if value <= 0:
@@ -21,11 +48,7 @@ def apply_noise_reduction(img, value):
     k = max(1, (value // 10) * 2 + 1)
     return cv2.medianBlur(img, k)
 
-
 def apply_rgb(img, r, g, b):
-    """
-    r, g, b are in range [-100, 100]
-    """
     img = img.astype(np.float32)
 
     # OpenCV uses BGR order
@@ -36,22 +59,9 @@ def apply_rgb(img, r, g, b):
     img = np.clip(img, 0, 255)
     return img.astype(np.uint8)
 
-
 def apply_grayscale(img):
     gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
     return cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
-
-def _apply_contrast_saturation(bgr, contrast=1.0, saturation=1.0):
-    # contrast in BGR space
-    out = cv2.convertScaleAbs(bgr, alpha=contrast, beta=0)
-
-    if abs(saturation - 1.0) > 1e-6:
-        hsv = cv2.cvtColor(out, cv2.COLOR_BGR2HSV).astype(np.float32)
-        hsv[:, :, 1] *= saturation
-        hsv[:, :, 1] = np.clip(hsv[:, :, 1], 0, 255)
-        out = cv2.cvtColor(hsv.astype(np.uint8), cv2.COLOR_HSV2BGR)
-
-    return out
 
 def apply_preset(img, preset: str):
     if preset == "dramatic-warm":
@@ -76,39 +86,61 @@ def apply_preset(img, preset: str):
 
     return img
 
-def remove_background(img):
+def remove_background(img, rect_pad=10, iter_count=5):
     """
-    Remove background using GrabCut.
-    Returns image with transparent background (BGRA).
+    Remove background using GrabCut, then refine mask for smoother edges.
+    Returns BGRA image with alpha channel.
+
+    rect_pad: padding from image border for initial rectangle
+    iter_count: GrabCut iterations
     """
     h, w = img.shape[:2]
 
-    # Initial mask
-    mask = np.zeros((h, w), np.uint8)
+    # Initial mask (all set to "probably background")
+    mask = np.full((h, w), cv2.GC_PR_BGD, dtype=np.uint8)
 
     # Rectangle slightly inside image borders
-    rect = (10, 10, w - 20, h - 20)
+    x = rect_pad
+    y = rect_pad
+    rw = max(1, w - 2 * rect_pad)
+    rh = max(1, h - 2 * rect_pad)
+    rect = (x, y, rw, rh)
 
     bgdModel = np.zeros((1, 65), np.float64)
     fgdModel = np.zeros((1, 65), np.float64)
 
-    cv2.grabCut(img, mask, rect, bgdModel, fgdModel, 5, cv2.GC_INIT_WITH_RECT)
+    # Run GrabCut
+    cv2.grabCut(img, mask, rect, bgdModel, fgdModel, iter_count, cv2.GC_INIT_WITH_RECT)
 
-    # Convert mask to binary
-    mask2 = np.where(
+    # Binary mask: foreground/prob foreground = 1, else 0
+    mask_bin = np.where(
         (mask == cv2.GC_FGD) | (mask == cv2.GC_PR_FGD),
-        1,
-        0
-    ).astype("uint8")
+        1, 0
+    ).astype(np.uint8)
 
-    # Apply mask
-    result = img * mask2[:, :, np.newaxis]
+    # --- Refinement stage ---
+    # 1) Remove noise (open) and fill small holes (close)
+    k = max(3, int(min(h, w) * 0.01) | 1)  # odd kernel size scaled to image
+    kernel = np.ones((k, k), np.uint8)
 
-    # Convert to BGRA
-    b, g, r = cv2.split(result)
-    alpha = (mask2 * 255).astype(np.uint8)
+    mask_clean = cv2.morphologyEx(mask_bin, cv2.MORPH_OPEN, kernel, iterations=1)
+    mask_clean = cv2.morphologyEx(mask_clean, cv2.MORPH_CLOSE, kernel, iterations=1)
 
+    # 2) Slight erosion to reduce background halos (optional but useful)
+    erode_k = max(3, (k // 2) | 1)
+    erode_kernel = np.ones((erode_k, erode_k), np.uint8)
+    mask_clean = cv2.erode(mask_clean, erode_kernel, iterations=1)
+
+    # 3) Soft alpha edges
+    alpha = (mask_clean * 255).astype(np.uint8)
+
+    blur_k = max(3, int(min(h, w) * 0.01) | 1)  # odd
+    alpha = cv2.GaussianBlur(alpha, (blur_k, blur_k), 0)
+
+    # Apply alpha to original image
+    b, g, r = cv2.split(img)
     return cv2.merge([b, g, r, alpha])
+
 
 def apply_crop(img, crop):
     """
@@ -134,6 +166,7 @@ def process_image(img, params):
     img = apply_brightness(img, params.get("brightness", 0))
     img = apply_sharpness(img, params.get("sharpness", 0))
     img = apply_noise_reduction(img, params.get("denoise", 0))
+    img = apply_blur(img, params.get("blur", 0))
 
     preset = params.get("preset", "none")
     if preset != "none":
